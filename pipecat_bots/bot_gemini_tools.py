@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Voice Control Agent - Deepgram STT + Gemini LLM + Deepgram TTS
+Voice Control Agent with Gemini Tools - Deepgram STT + Gemini LLM + Rime TTS
 
-Uses separate services for STT, LLM, and TTS.
-Requires: GOOGLE_API_KEY and DEEPGRAM_API_KEY
+Single-agent bot with tool calling for computer control and Claude Code integration.
+Uses GoogleLLMService (REST API) with registered function handlers.
+
+Requires: GOOGLE_API_KEY, DEEPGRAM_API_KEY, RIME_API_KEY
 
 Run:
-    uv run agent_gemini_live.py -t webrtc --host 0.0.0.0
+    just voice
+    # or
+    uv run pipecat_bots/bot_gemini_tools.py -t webrtc --host 0.0.0.0
 """
 
 import os
