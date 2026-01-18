@@ -1,33 +1,72 @@
+# Model weights (download separately, ~120GB total)
+models/
+
+# External repositories (install via pip)
+pipecat/
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-*.egg-info/
-.eggs/
-dist/
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Environment
-.env
+# Virtual environments
 .venv/
 venv/
+ENV/
+env/
+.env
 
-# IDE
+# IDE and editors
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
+
+# Lock files
+uv.lock
+
+# Planning/development notes
+PLANNING.md
+PLANNING-LLM.md
+WEBSOCKET_PLANNING.md
+
+# Binary documentation
+*.pdf
+
+# Test outputs
+tests/fixtures/output/
+
+# Temporary/generated files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# GGUF files (large model format)
+*.gguf
 
 # Testing
 .coverage
 .pytest_cache/
 htmlcov/
-
-# OS
-.DS_Store
-
-# Logs
-*.log
-
-# UV
-.uv/

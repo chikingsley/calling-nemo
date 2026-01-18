@@ -3,13 +3,15 @@
 [![Demo Video](https://img.youtube.com/vi/8Fkz2PC54BI/maxresdefault.jpg)](https://www.youtube.com/watch?v=8Fkz2PC54BI)
 
 This repo is sample code for building voice agents with three NVIDIA open source models:
-  - Nemotron Speech ASR
-  - Nemotron 3 Nano LLM
-  - Magpie TTS (Preview)
+
+- Nemotron Speech ASR
+- Nemotron 3 Nano LLM
+- Magpie TTS (Preview)
 
 Run locally on an NVIDIA DGX Spark or RTX 5090. Or deploy to the cloud with Modal and Pipecat Cloud.
 
 Accompanying blog posts:
+
 - [Nemotron Speech ASR Open Source Model Launch Post](https://huggingface.co/blog/nvidia/nemotron-speech-asr-scaling-voice-agents)
 - [More About Voice Agent Architectures and This Agent's Design](https://www.daily.co/blog/building-voice-agents-with-nvidia-open-models/)
 
@@ -50,7 +52,7 @@ Open `http://localhost:7860/client` in your browser.
 
 #### 1. Prerequisites
 
-Create a [Modal](https://www.modal.com) account if you don't have one. 
+Create a [Modal](https://www.modal.com) account if you don't have one.
 
 Then, install the necessary dependencies using `uv` with optional dependency group `modal` and authenticate your account.
 
@@ -135,7 +137,7 @@ image_credentials = "gdx-spark-bot-pull-secret"
 agent_profile = "agent-1x"
 
 [scaling]
-	min_agents = 1
+ min_agents = 1
 ```
 
 #### 4. Build and push Docker image
@@ -180,7 +182,6 @@ pipecat cloud agent start gdx-spark-bot --use-daily
 ```
 
 [See docs](https://docs.pipecat.ai/deployment/pipecat-cloud/fundamentals/active-sessions) for REST and Python usage.
-
 
 ## Bot Variants
 
@@ -285,6 +286,7 @@ docker build -f Dockerfile.unified -t nemotron-unified:cuda13 .
 ```
 
 The build compiles from source for CUDA 13.1 / Blackwell (sm_121):
+
 - PyTorch (with NVRTC support)
 - torchaudio
 - NeMo ASR/TTS
@@ -317,15 +319,17 @@ For detailed architecture documentation including frame flow, protocols, and tim
 
 ## Troubleshooting
 
-**LLM crashes or stalls**:
+__LLM crashes or stalls__:
+
 - The buffered LLM service uses single-slot operation (`--parallel 1`)
 - Ensure adequate VRAM for context size (default 16384 tokens)
 - Check for httpx connection issues if generation hangs
 
-**vLLM takes 10-15 minutes to start**:
+__vLLM takes 10-15 minutes to start__:
+
 - This is normal for first startup (model loading, kernel compilation)
 - Set `SERVICE_TIMEOUT=900` if needed
 
-**vLLM DNS resolution issues**:
-- The container uses `--network=host` in vLLM mode to avoid DNS issues with HuggingFace
+__vLLM DNS resolution issues__:
 
+- The container uses `--network=host` in vLLM mode to avoid DNS issues with HuggingFace

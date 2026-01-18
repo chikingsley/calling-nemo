@@ -1,13 +1,59 @@
 [project]
-name = "voice-control-agent"
+name = "calling-nemo"
 version = "0.1.0"
-description = "Voice-controlled agent for computer control and Claude Code integration"
-requires-python = ">=3.10"
+description = "Calling Nemo - Voice agent with computer control, Claude Code integration, and local speech services (llama.cpp/VLLM/NeMo)"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [
+    { name = "Chi Ejimofor", email = "chi@peacockery.studio" }
+]
+keywords = ["voice-agent", "speech", "asr", "tts", "pipecat", "claude-code", "computer-control"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
 dependencies = [
-    "pipecat-ai[google,deepgram,silero,webrtc,runner]>=0.0.99",
+    "pipecat-ai[silero,openai,cartesia,runner,daily,local-smart-turn-v3,webrtc,google,deepgram]==0.0.98",
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
+    "websockets>=12.0",
+    "aiohttp>=3.9.0",
+    "numpy>=1.26.0",
+    "gdown>=5.0.0",
+    "nvidia-riva-client>=2.16.0",
 ]
+
+[project.optional-dependencies]
+nemo = [
+    "nemo_toolkit[asr]>=2.6.0",
+]
+modal = [
+    "modal>=1.3.0.post1",
+]
+bot = [
+    "pipecat-ai-cli>=0.1.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/peacockery/calling-nemo"
+Documentation = "https://github.com/peacockery/calling-nemo#readme"
+Repository = "https://github.com/peacockery/calling-nemo"
+
+[project.scripts]
+nemotron-speech = "nemotron_speech.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nemotron_speech"]
 
 [dependency-groups]
 dev = [
@@ -16,6 +62,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff",
     "ty",
+    "aiortc>=1.14.0",
 ]
 
 [tool.ty.environment]
@@ -36,6 +83,7 @@ extend-select = [
     "W",    # PyCodeStyle warnings
     "E",    # PyCodeStyle errors
     "I",    # Sort imports properly
+    "B",    # flake8-bugbear
     "UP",   # Warn if certain things can be changed due to newer Python versions
     "C4",   # Catch incorrect use of comprehensions, dict, list, etc
     "FA",   # Enforce from __future__ import annotations
@@ -48,4 +96,8 @@ extend-select = [
     "PTH",  # Use pathlib instead of os.path
     "TD",   # Be diligent with TODO comments
     "NPY",  # Some numpy-specific things
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
 ]
