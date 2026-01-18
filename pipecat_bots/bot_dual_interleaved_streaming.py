@@ -30,16 +30,19 @@ from io import BytesIO
 from pathlib import Path
 
 from dotenv import load_dotenv
+from llama_cpp_buffered_llm import LlamaCppBufferedLLMService
 from loguru import logger
+from magpie_websocket_tts import MagpieWebSocketTTSService
 
+# Import our custom local services
+from nvidia_stt import NVidiaWebSocketSTTService
 from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
 from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import Frame, LLMMessagesFrame, LLMRunFrame
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.parallel_pipeline import ParallelPipeline
+from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
@@ -48,10 +51,11 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.processors.audio.audio_buffer_processor import AudioBufferProcessor
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIObserver, RTVIProcessor
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
-from pipecat.services.gemini_multimodal_live.gemini import GeminiMultimodalLiveService
+from pipecat.services.google.llm import GoogleLLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 from pipecat.transports.websocket.fastapi import FastAPIWebsocketParams
@@ -59,14 +63,9 @@ from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_processor import UserTurnProcessor
 from pipecat.turns.user_turn_strategies import ExternalUserTurnStrategies, UserTurnStrategies
 
-# Import our custom local services
-from nvidia_stt import NVidiaWebSocketSTTService
-from magpie_websocket_tts import MagpieWebSocketTTSService
-from llama_cpp_buffered_llm import LlamaCppBufferedLLMService
-from v2v_metrics import V2VMetricsProcessor
-
 # Import tools
-from tools import GEMINI_TOOLS, execute_tool
+from tools import TOOL_HANDLERS, tools
+from v2v_metrics import V2VMetricsProcessor
 
 
 class ContextTimingWrapper(FrameProcessor):
@@ -113,7 +112,7 @@ async def save_audio_file(audio: bytes, sample_rate: int, num_channels: int, fil
             wf.setframerate(sample_rate)
             wf.writeframes(audio)
 
-        with open(filepath, "wb") as f:
+        with filepath.open("wb") as f:
             f.write(buffer.getvalue())
 
     try:
@@ -147,11 +146,11 @@ transport_params = {
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     logger.info("Starting dual-agent interleaved streaming bot")
-    logger.info(f"  Conversational Agent: Nemotron (local)")
+    logger.info("  Conversational Agent: Nemotron (local)")
     logger.info(f"    ASR URL: {NVIDIA_ASR_URL}")
     logger.info(f"    LLM URL: {NVIDIA_LLAMA_CPP_URL}")
     logger.info(f"    TTS URL: {NVIDIA_TTS_URL}")
-    logger.info(f"  Background Agent: Gemini (tools/work)")
+    logger.info("  Background Agent: Gemini (tools/work)")
     logger.info(f"  Transport: {type(transport).__name__}")
     logger.info(f"  Recording: {'enabled' if ENABLE_RECORDING else 'disabled'}")
     logger.info(f"  VAD stop_secs: {VAD_STOP_SECS}s")
@@ -217,7 +216,22 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         },
     ]
 
-    context = LLMContext(messages)
+    # Conversational context - no tools (just conversation)
+    conversational_context = LLMContext(messages)
+
+    # Background context - with tools for Gemini
+    background_messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a background assistant that executes tools silently. "
+                "You help control computers and manage Claude Code sessions. "
+                "When the user asks to do something, execute the appropriate tool. "
+                "Do not speak aloud - just execute tools and report results briefly."
+            ),
+        },
+    ]
+    background_context = LLMContext(background_messages, tools)
 
     # Shared turn processor - both agents respect the same turn management
     user_turn_processor = UserTurnProcessor(
@@ -227,11 +241,11 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     )
 
     # Conversational agent (Nemotron) - aggregator pair
-    conversational_aggregator = LLMContextAggregatorPair(context)
+    conversational_aggregator = LLMContextAggregatorPair(conversational_context)
 
     # Background agent (Gemini) - uses external turn strategies for shared turn management
     background_aggregator = LLMContextAggregatorPair(
-        context,
+        background_context,
         user_params=LLMUserAggregatorParams(user_turn_strategies=ExternalUserTurnStrategies()),
     )
 
@@ -247,12 +261,17 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     )
     logger.info("Using LlamaCppBufferedLLMService for conversational agent (single-slot, 100% cache)")
 
-    # Background LLM service - Gemini with tool support
-    background_llm = GeminiMultimodalLiveService(
+    # Background LLM service - Gemini with tool support (REST API)
+    background_llm = GoogleLLMService(
         api_key=os.getenv("GOOGLE_API_KEY"),
         model="gemini-2.5-flash-lite",
     )
-    logger.info("Using Gemini 2.5 Flash for background agent (tools/work)")
+
+    # Register tool handlers with background LLM
+    for tool_name, handler in TOOL_HANDLERS.items():
+        background_llm.register_function(tool_name, handler)
+
+    logger.info("Using GoogleLLMService for background agent (tools/work)")
 
     # RTVI processor for client communication
     rtvi = RTVIProcessor(config=RTVIConfig(config=[]))
