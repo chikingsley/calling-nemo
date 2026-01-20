@@ -1,0 +1,49 @@
+services:
+  qwen3:
+    image: nemotron-unified:cuda13
+    container_name: qwen3
+    restart: unless-stopped
+    networks:
+      - llama-net
+    ports:
+      - "8090:8090"
+    volumes:
+      - /home/simon/models:/models
+    command: >
+      llama-server
+      -m /models/Qwen3-4B-Q4_K_M.gguf
+      --host 0.0.0.0
+      --port 8090
+      -ngl 99
+      -c 8192
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ipc: host
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: llama-tunnel
+    restart: unless-stopped
+    networks:
+      - llama-net
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      qwen3:
+        condition: service_healthy
+
+networks:
+  llama-net:
+    driver: bridge
